@@ -1,0 +1,44 @@
+name: YouTube-4M access request
+description: Request the Google Drive link for the YouTube-4M audio
+title: "[YouTube-4M access] <your name>"
+labels: ["data access"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The YouTube-4M audio (the YouTube-8M part of AudioSetCaps) is shared through Google Drive on request.
+        Fill in the fields below and the folder link will be sent to the email address you provide.
+
+        **Issues are public: the email address you enter here will be visible to anyone who can see this repository.**
+  - type: input
+    id: name
+    attributes:
+      label: Name
+    validations:
+      required: true
+  - type: input
+    id: email
+    attributes:
+      label: Email address (Google account to share the folder with)
+    validations:
+      required: true
+  - type: input
+    id: affiliation
+    attributes:
+      label: Affiliation
+    validations:
+      required: true
+  - type: textarea
+    id: use
+    attributes:
+      label: Intended use
+      description: A short description of what you will use the audio for.
+    validations:
+      required: true
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Terms
+      options:
+        - label: I will use the audio for non-commercial research only and will not redistribute it.
+          required: true

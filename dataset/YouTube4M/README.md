@@ -1,25 +1,28 @@
-# YouTube-8M Preparing Script
+# YouTube-4M Preparing Script
 
-This guide describes how to download the YouTube-8M audio dataset from Google Drive, extract the archives efficiently, and generate Lhotse manifests for training use.
+This guide describes how to download the YouTube-4M audio (the YouTube-8M part of AudioSetCaps) from Google Drive and extract the archives efficiently, so that it can be linked to the CaptionStew captions (`dataset_splits/YouTube4M.jsonl.gz`, 4.01M clips with AudioSetCaps captions).
 
-We pre-filtered the YouTube-8M dataset to remove overlap with common evaluation benchmarks, including the AudioCaps evaluation/test set, the VggSound test set, and the MusicCaps evaluation set.
+The CaptionStew captions are pre-filtered to remove overlap with common evaluation benchmarks, including the AudioCaps evaluation/test set, the VggSound test set, and the MusicCaps evaluation set.
 
 ## Dataset Source
 
-The dataset is hosted on Google Drive:
+The dataset is hosted on Google Drive. The link is shared on request: open an issue in this repository using the
+[**YouTube-4M access request**](https://github.com/RayTzeng/CaptionStew-data-prep/issues/new?template=youtube4m-access.yml)
+template and provide the email address (Google account) the folder should be shared with, your affiliation, and your
+intended use. The link will be sent to that email address.
 
-<https://drive.google.com/drive/folders/1ZKyRZw3AhS3HkWivgMqtMODB0TkVPNk5?usp=sharing>
+Issues are public, so your email address will be visible to anyone who can see the repository.
 
 Because this dataset is large (around 600 GB), a good practice is to first make a copy to your own Google Drive. This helps avoid overusing the shared link and usually makes the download workflow more stable.
 
 ## Recommended Workflow
 
-1. Make a copy of the shared dataset folder into your own Google Drive.
+1. Request the Google Drive link (see above) and make a copy of the shared dataset folder into your own Google Drive.
 2. Install and configure `rclone`.
 3. Download the copied folder from your own Google Drive to your local machine or remote server.
 4. Extract all `.tar.gz` archives.
-5. Generate Lhotse manifests.
-6. Validate the manifests and inspect basic statistics.
+5. Link the captions to the audio.
+6. Validate the linked manifests.
 
 ## 1. Install `rclone`
 
@@ -49,14 +52,20 @@ After setup, make sure your Google Drive remote is accessible. In the examples b
 
 Once the folder has been copied into your own Google Drive, download it with `rclone`:
 
-    rclone copy mydrive:/path/to/copied/YouTube8M /path/to/YouTube8M --progress
+    rclone copy mydrive:/path/to/copied/YouTube4M "${audio_root}/youtube4m" --progress
 
 You may also add additional `rclone` options depending on your environment, for example increasing transfer concurrency:
 
-    rclone copy mydrive:/path/to/copied/YouTube8M /path/to/YouTube8M \
+    rclone copy mydrive:/path/to/copied/YouTube4M "${audio_root}/youtube4m" \
       --progress \
       --transfers 8 \
       --checkers 16
+
+If you prefer not to copy the folder, `rclone` can also read the shared folder directly by its ID, the last part of the folder link you received (you need to be signed in to Google Drive with the remote):
+
+    rclone copy mydrive: "${audio_root}/youtube4m" \
+      --drive-root-folder-id <folder_id> \
+      --progress
 
 After downloading, the dataset directory should contain many `.tar.gz` files distributed across batch folders.
 
@@ -70,25 +79,24 @@ Install them with:
 
 Then run:
 
-    find /path/to/YouTube8M -type f -name "*.tar.gz" | while read f; do
+    find "${audio_root}/youtube4m" -type f -name "*.tar.gz" | while read f; do
       echo "Extracting $f"
-      pv "$f" | pigz -dc | tar -xf - -C "$(dirname "$f")"
+      pv "$f" | pigz -dc | tar -xf - -C "$(dirname "$f")" && rm "$f"
     done
 
-This extracts each `.tar.gz` into its parent directory.
+This extracts each `.tar.gz` into its parent directory and deletes the archive afterwards (drop `&& rm "$f"` to keep the archives).
 Otherwise, you may also use the normal extraction command:
 
-    find folder -type f -name "*.tar.gz" | while read f; do
+    find "${audio_root}/youtube4m" -type f -name "*.tar.gz" | while read f; do
         d=$(dirname "$f")
-        tar -xzf "$f" -C "$d"
+        tar -xzf "$f" -C "$d" && rm "$f"
     done
-
 
 ## 5. Expected Folder Structure After Extraction
 
 After extraction, the folder structure should look like this:
 
-    YouTube8M/
+    ${audio_root}/youtube4m/
     ├── batch1/           (110 categories)
     │   ├── Terra_(comics)/
     │   │   └── *.mp3 files
@@ -108,50 +116,25 @@ After extraction, the folder structure should look like this:
     ├── batch10/          (294 categories)
     └── batch11/          (305 categories)
 
-Each category directory contains `.mp3` files.
+Each category directory contains `.mp3` files named `<youtube_id>_<start>_<duration>.mp3`.
 
-## 6. Generate Lhotse Manifests
+## 6. Link the Captions
 
-After extraction, download the caption `.csv` file and generate the Lhotse manifests with your `generate_manifest.py` script.
+These commands link the per-dataset caption file(s) this source serves (Outcome B in the top-level README). To build CaptionStew 10M (Outcome A), prepare every audio source first and then link `captions/10M/shard_*.jsonl.gz` as described in the [top-level README](../../README.md#outcome-a-captionstew-10m).
 
-Download the caption file:
+    python ../../link_captions.py /path/to/captions/dataset_splits/YouTube4M.jsonl.gz \
+      --root youtube4m="${audio_root}/youtube4m" \
+      --output-dir /path/to/manifests
 
-    wget https://github.com/RayTzeng/CaptionStew-data-prep/releases/download/v1.0.0/YouTube-8M_AudioSetCaps_caption.filtered.csv
-
-### Test Run
-
-Use a small test run for debugging purposes:
-
-    python generate_manifest.py \
-      /path/to/YouTube8M \
-      YouTube-8M_AudioSetCaps_caption.filtered.csv \
-      /output/jsonl/gz/path \
-      --limit 100
-
-### Full Run
-
-Once the test run succeeds, launch the full manifest generation:
-
-    python generate_manifest.py \
-      /path/to/YouTube8M \
-      YouTube-8M_AudioSetCaps_caption.filtered.csv \
-      /output/jsonl/gz/path
+The script reports how many clips were found and lists missing ones in `/path/to/manifests/missing_audio.txt`.
 
 ## 7. Validate the Output
 
-After manifest generation, validate the output manifest(s):
-
-    lhotse validate /output/jsonl/gz/path
-
-You can also inspect basic statistics with:
-
-    lhotse cut describe /output/jsonl/gz/path
-
-If your script writes multiple manifest files, replace `/output/jsonl/gz/path` with the specific manifest file you want to validate or inspect.
+    python ../../validate.py /path/to/manifests/dataset_splits/YouTube4M.jsonl.gz
 
 ## Caption Reference
 
-The caption file and the YouTube-8M downloading link provided in this folder is based on:
+The captions and the YouTube-8M audio provided in this folder are based on:
 
 >Bai, Jisheng, et al. *AudioSetCaps: An Enriched Audio-Caption Dataset Using Automated Generation Pipeline with Large Audio and Language Models.* IEEE/ACM Transactions on Audio, Speech, and Language Processing, 2025.
 
@@ -160,5 +143,5 @@ The caption file and the YouTube-8M downloading link provided in this folder is 
 
 - The full dataset is large, so make sure you have sufficient disk space before downloading and extraction.
 - Extraction can take a long time because the dataset contains a very large number of archives.
-- Running a small manifest-generation test first is strongly recommended before launching the full pipeline.
 - Using your own Google Drive copy is recommended for reliability and to avoid overusing the original shared folder.
+- About 10k clips appear in two category folders. CaptionStew keeps one cut per clip (with the captions of both entries), pointing to the first folder it was listed under.
