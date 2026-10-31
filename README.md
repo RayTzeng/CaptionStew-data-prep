@@ -212,6 +212,17 @@ Models in the paper resample all audio to 16 kHz (e.g. `cuts.resample(16000)`).
     dataset/<Source>/        one recipe (README + scripts) per audio source
     tools/                   maintainer tools for building the Hugging Face release
 
+## Changelog
+
+- **2026-10-31**: Added the README banner and the dataset links in the introduction.
+- **2026-10-29**: Restructured the repository into download-and-link recipes for the CaptionStew captions on Hugging Face.
+  - Shared scripts to download the captions (`download_captions.sh`), link them to local audio (`link_captions.py`) and
+    check the result (`validate.py`), for CaptionStew 10M and for each caption dataset in `dataset_splits/`.
+  - New recipes: AudioSet (`Muno459/AudioSet`), Clotho (Zenodo v2.1) and JamendoMaxCaps.
+  - Revised recipes: VGGSound, WavCaps (now all four subsets), YouTube-4M (link shared on request) and ParaSpeechCaps.
+  - Maintainer tool to build the caption release with source-relative audio paths (`tools/build_release_v2.py`).
+- **2026-03-18**: Initial recipes for YouTube-8M, VGGSound, ParaSpeechCaps and WavCaps (BBC Sound Effects and SoundBible).
+
 ## Disclaimer
 
 This repository has not yet been extensively tested. If you run into a problem or have a suggestion, please
