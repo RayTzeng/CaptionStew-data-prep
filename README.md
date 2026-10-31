@@ -1,5 +1,9 @@
 # CaptionStew: Unified Data Preparation for Diverse-Domain Audio Captioning
 
+<p align="center">
+  <img src="assets/banner.png" alt="CaptionStew: eight open caption datasets combined into one diverse-domain audio caption corpus" width="100%">
+</p>
+
 This repository provides easy-to-follow recipes to download the audio of **CaptionStew**, a collection of more than
 10 million audio captions spanning diverse domains, and to pair every clip with its metadata and captions. 
 
