@@ -210,6 +210,7 @@ Models in the paper resample all audio to 16 kHz (e.g. `cuts.resample(16000)`).
 
 ## Citation
 
+If you find this repository useful, please consider citing the following work:
 ```bibtex
 @article{tseng2025revisiting,
   title={Revisiting Audio-language Pretraining for Learning General-purpose Audio Representation},
