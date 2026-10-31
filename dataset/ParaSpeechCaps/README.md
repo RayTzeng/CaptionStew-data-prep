@@ -1,9 +1,17 @@
 
 # ParaSpeechCaps Preparing Script
 
-This guide describes how to prepare the ParaSpeechCaps dataset by downloading each source dataset, applying the required preprocessing steps, and generating Lhotse manifests for training use.
+This guide describes how to prepare the ParaSpeechCaps audio by downloading each source dataset and applying the required preprocessing steps, so that it can be linked to the CaptionStew captions (`dataset_splits/ParaSpeechCaps.jsonl.gz`).
 
-ParaSpeechCaps contains speaking-style captions paired with audio from VoxCeleb, EARS, Expresso, and Emilia.
+ParaSpeechCaps contains speaking-style captions paired with audio from VoxCeleb, EARS, Expresso, and Emilia. CaptionStew uses its `train_base` and `train_scaled` splits:
+
+| Source dataset | Clips referenced | CaptionStew source name |
+|---|---:|---|
+| VoxCeleb1 (dev) | 22,257 | `voxceleb1` |
+| VoxCeleb2 (dev) | 61,797 | `voxceleb2` |
+| EARS | 13,983 | `ears` |
+| Expresso | 12,001 | `expresso` |
+| Emilia (EN) | 924,651 | `emilia` |
 
 ## Dataset Source
 
@@ -23,12 +31,13 @@ You may choose where to store the audio files for each source dataset. In the co
 - `${ears_root}`
 - `${emilia_root}`
 
+If you keep all CaptionStew audio under one `${audio_root}`, use `${audio_root}/voxceleb1`, `${audio_root}/voxceleb2`, `${audio_root}/expresso`, `${audio_root}/ears` and `${audio_root}/emilia`; otherwise pass each root to `link_captions.py` with `--root`.
+
 ## Recommended Workflow
 
 1. Download and prepare each source dataset.
-2. Run a small test job to verify the pipeline.
-3. Generate Lhotse manifests.
-4. Validate the generated manifests and inspect basic statistics.
+2. Link the captions to the audio.
+3. Validate the linked manifests.
 
 ## 1. Download and Prepare Each Source Dataset
 
@@ -38,61 +47,45 @@ Request access to the VoxCeleb dataset here:
 
 <https://mm.kaist.ac.kr/datasets/voxceleb/>
 
-Download the audio files for both VoxCeleb1 and VoxCeleb2.
+CaptionStew only uses the dev sets of VoxCeleb1 and VoxCeleb2 (the test sets are kept for evaluation), so the test archives are not needed.
 
 #### VoxCeleb1
 
 A minimal preparation script looks like:
 
-    mkdir -p "${voxceleb1_root}"
-    cd "${voxceleb1_root}"
-    mkdir -p dev test
-
-    cd dev
+    mkdir -p "${voxceleb1_root}/dev"
+    cd "${voxceleb1_root}/dev"
     wget "link to VoxCeleb1 dev zip parts"
     cat vox1_dev_wav* > vox1_dev_wav.zip
     unzip vox1_dev_wav.zip
 
-    cd ../test
-    wget "link to VoxCeleb1 test zip"
-    unzip vox1_test_wav.zip
-
 After extraction, the directory structure should look like:
 
     ${voxceleb1_root}/
-    ├── dev/
-    │   └── wav/
-    └── test/
+    └── dev/
         └── wav/
+            └── id10001/<video_id>/<utterance>.wav
 
 #### VoxCeleb2
 
 A minimal preparation script looks like:
 
-    mkdir -p "${voxceleb2_root}"
-    cd "${voxceleb2_root}"
-    mkdir -p dev test
-
-    cd dev
+    mkdir -p "${voxceleb2_root}/dev"
+    cd "${voxceleb2_root}/dev"
     wget "link to VoxCeleb2 dev zip parts"
     cat vox2_dev_aac* > vox2_aac.zip
     unzip vox2_aac.zip
 
-    cd ../test
-    wget "link to VoxCeleb2 test zip"
-    unzip vox2_test_aac.zip
-
 After extraction, the directory structure should look like:
 
     ${voxceleb2_root}/
-    ├── dev/
-    │   └── aac/
-    └── test/
+    └── dev/
         └── aac/
+            └── id00012/<video_id>/<utterance>.m4a
 
-Convert the `.m4a` files in VoxCeleb2 to `.wav` files using the following script. This creates a copy of each audio file with a `.wav` extension in the same directory:
+Convert the `.m4a` files to `.wav` files using the following script (requires `ffmpeg`). This creates a copy of each audio file with a `.wav` extension in the same directory, which is the file that gets linked:
 
-    ./preprocessing/convert_m4a_to_wav.py "${voxceleb2_root}"
+    python ./preprocessing/convert_m4a_to_wav.py "${voxceleb2_root}"
 
 ### 1.2 Expresso
 
@@ -101,7 +94,7 @@ Download the Expresso dataset and extract it:
     wget https://dl.fbaipublicfiles.com/textless_nlp/expresso/data/expresso.tar
     tar -xvf expresso.tar
 
-After extraction, the directory structure should look like:
+The extracted `expresso/` folder is `${expresso_root}`. Its directory structure should look like:
 
     ${expresso_root}/
     ├── README.txt
@@ -115,7 +108,7 @@ After extraction, the directory structure should look like:
 
 Apply VAD segmentation to the Expresso conversational audio files. This will create an `audio_48khz/conversational_vad_segmented` directory containing the segmented audio files:
 
-    python ./audio_preprocessing/apply_expresso_vad.py "${expresso_root}"
+    python ./preprocessing/apply_expresso_vad.py "${expresso_root}"
 
 ### 1.3 EARS
 
@@ -142,7 +135,7 @@ After extraction, the directory structure should look like:
 
 Emilia is downloaded from Hugging Face. Make sure you have access to the repository before running the commands below.
 
-Create the target directory and download the English subset archives:
+CaptionStew uses the English batches `EN_B00000` to `EN_B00092`, except `EN_B00090` and `EN_B00091`. Create the target directory and download them:
 
     mkdir -p "${emilia_root}"
     cd "${emilia_root}"
@@ -150,7 +143,8 @@ Create the target directory and download the English subset archives:
     repo="amphion/Emilia-Dataset"
     rev="fc71e07e8572f5f3be1dbd02ed3172a4d298f152"
 
-    for i in $(seq 1 113); do
+    for i in $(seq 0 92); do
+      [ "$i" -eq 90 ] || [ "$i" -eq 91 ] && continue
       tag=$(printf "B%05d" "$i")
 
       if [ "$tag" = "B00008" ]; then
@@ -166,72 +160,39 @@ Then extract the downloaded archives:
 
     cd ./EN
 
-    for i in $(seq 1 113); do
-      tag=$(printf "B%05d" "$i")
-      tar -xzf "EN_${tag}.tar.gz"
+    for f in EN_B*.tar.gz; do
+      tar -xzf "$f" && rm "$f"
     done
 
 After extraction, the directory structure should look like:
 
     ${emilia_root}/
     └── EN/
+        ├── EN_B00000/
+        │   └── EN_B00000_S00000/mp3/EN_B00000_S00000_W000000.mp3
         ├── EN_B00001/
-        ├── EN_B00002/
         ├── ...
-        └── EN_B00113/
+        └── EN_B00092/
 
-## 2. Generate Lhotse Manifests
+## 2. Link the Captions
 
-After all source datasets are prepared, generate the ParaSpeechCaps manifests.
+These commands link the per-dataset caption file(s) this source serves (Outcome B in the top-level README). To build CaptionStew 10M (Outcome A), prepare every audio source first and then link `captions/10M/shard_*.jsonl.gz` as described in the [top-level README](../../README.md#outcome-a-captionstew-10m).
 
-### Test Run
+After all source datasets are prepared, link the ParaSpeechCaps captions to the audio:
 
-Use a small test run for debugging purposes:
+    python ../../link_captions.py /path/to/captions/dataset_splits/ParaSpeechCaps.jsonl.gz \
+      --root voxceleb1="${voxceleb1_root}" \
+      --root voxceleb2="${voxceleb2_root}" \
+      --root ears="${ears_root}" \
+      --root expresso="${expresso_root}" \
+      --root emilia="${emilia_root}" \
+      --output-dir /path/to/manifests
 
-    python generate_manifest.py \
-      --voxceleb1_path "${voxceleb1_root}" \
-      --voxceleb2_path "${voxceleb2_root}" \
-      --ears_path "${ears_root}" \
-      --expresso_path "${expresso_root}" \
-      --emilia_path "${emilia_root}" \
-      --output_dir /path/to/store/manifests \
-      --num_workers 8 \
-      --no-find \
-      --limit 100
-
-### Full Run
-
-Once the test run succeeds, launch the full run:
-
-    python generate_manifest.py \
-      --voxceleb1_path "${voxceleb1_root}" \
-      --voxceleb2_path "${voxceleb2_root}" \
-      --ears_path "${ears_root}" \
-      --expresso_path "${expresso_root}" \
-      --emilia_path "${emilia_root}" \
-      --output_dir /path/to/store/manifests \
-      --num_workers 8 \
-      --no-find
-
-The process will generate:
-
-    ParaSpeechCaps_train.jsonl.gz
-    ParaSpeechCaps_dev.jsonl.gz
-    ParaSpeechCaps_test.jsonl.gz
+The script reports, per source, how many clips were found, and lists missing ones in `/path/to/manifests/missing_audio.txt`.
 
 ## 3. Validate the Output
 
-After manifest generation, validate the generated manifests:
-
-    lhotse validate /path/to/store/manifests/ParaSpeechCaps_train.jsonl.gz
-    lhotse validate /path/to/store/manifests/ParaSpeechCaps_dev.jsonl.gz
-    lhotse validate /path/to/store/manifests/ParaSpeechCaps_test.jsonl.gz
-
-You can also inspect basic statistics with:
-
-    lhotse cut describe /path/to/store/manifests/ParaSpeechCaps_train.jsonl.gz
-    lhotse cut describe /path/to/store/manifests/ParaSpeechCaps_dev.jsonl.gz
-    lhotse cut describe /path/to/store/manifests/ParaSpeechCaps_test.jsonl.gz
+    python ../../validate.py /path/to/manifests/dataset_splits/ParaSpeechCaps.jsonl.gz
 
 ## Caption Reference
 
@@ -241,9 +202,7 @@ The captions are provided in the following work, and some of the preprocessing s
 
 ## Notes
 
-- Make sure all source datasets are downloaded and organized under the expected directory structure before running manifest generation.
+- Make sure all source datasets are downloaded and organized under the expected directory structure before linking.
 - VoxCeleb requires access approval before download.
 - Emilia requires access to the Hugging Face repository and a working `hf download` setup.
-- It is strongly recommended to run the small test job first before launching the full preprocessing pipeline.
-- The `--no-find` flag should be kept if your pipeline expects the source datasets to already be fully prepared in the specified directories.
-
+- ParaSpeechCaps' dev and test splits are not part of CaptionStew; they are used for evaluation in the paper.

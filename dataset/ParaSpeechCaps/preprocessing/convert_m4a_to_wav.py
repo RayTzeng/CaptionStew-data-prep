@@ -2,11 +2,17 @@
 """
 Convert all .m4a files to .wav format using multithreading.
 
+With --manifest, only the VoxCeleb2 utterances referenced by a CaptionStew
+manifest (e.g. dataset_splits/ParaSpeechCaps.jsonl.gz) are converted.
+
 Usage:
     python convert_m4a_to_wav.py <search_directory> [--workers N]
+    python convert_m4a_to_wav.py <voxceleb2_root> --manifest /path/to/captions/dataset_splits/ParaSpeechCaps.jsonl.gz
 """
 
 import argparse
+import gzip
+import json
 import subprocess
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -61,6 +67,29 @@ def find_m4a_files(search_dir: Path) -> List[Path]:
     return list(search_dir.rglob('*.m4a'))
 
 
+def find_referenced_m4a_files(voxceleb2_root: Path, manifest: Path) -> List[Path]:
+    """
+    Find the M4A files referenced by "voxceleb2/..." keys in a CaptionStew manifest.
+
+    Args:
+        voxceleb2_root: Root directory of VoxCeleb2 (containing dev/aac/...)
+        manifest: CaptionStew manifest (.jsonl.gz)
+
+    Returns:
+        List of Path objects pointing to existing M4A files
+    """
+    files = []
+    with gzip.open(manifest, 'rt', encoding='utf-8') as f:
+        for line in f:
+            if '"voxceleb2/' not in line:
+                continue
+            key = json.loads(line)['recording']['sources'][0]['source']
+            m4a_file = voxceleb2_root / (key[len('voxceleb2/'):] + '.m4a')
+            if m4a_file.exists():
+                files.append(m4a_file)
+    return files
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Convert M4A files to WAV format using multithreading'
@@ -76,6 +105,12 @@ def main():
         default=16,
         help='Number of worker threads (default: 16)'
     )
+    parser.add_argument(
+        '--manifest',
+        type=Path,
+        default=None,
+        help='CaptionStew manifest; only convert the VoxCeleb2 utterances it references'
+    )
 
     args = parser.parse_args()
 
@@ -89,8 +124,12 @@ def main():
         return 1
 
     # Find all M4A files
-    print(f"Searching for M4A files in {args.search_dir}...")
-    m4a_files = find_m4a_files(args.search_dir)
+    if args.manifest:
+        print(f"Collecting M4A files referenced by {args.manifest}...")
+        m4a_files = find_referenced_m4a_files(args.search_dir, args.manifest)
+    else:
+        print(f"Searching for M4A files in {args.search_dir}...")
+        m4a_files = find_m4a_files(args.search_dir)
 
     if not m4a_files:
         print("No M4A files found")

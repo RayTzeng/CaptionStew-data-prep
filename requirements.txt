@@ -1,0 +1,15 @@
+# Linking / validation
+lhotse>=1.20
+soundfile>=0.12
+tqdm
+
+# Downloading from Hugging Face (hf CLI and recipes reading parquet shards)
+huggingface_hub>=0.34
+pyarrow>=14
+datasets>=2.16
+
+# ParaSpeechCaps preprocessing (Expresso VAD segmentation)
+pydub
+
+# System tools used by some recipes (install with your package manager or conda):
+#   ffmpeg (VoxCeleb2 m4a -> wav, mp3/m4a decoding), 7z (Clotho), rclone (YouTube-4M), zip/unzip (WavCaps)
