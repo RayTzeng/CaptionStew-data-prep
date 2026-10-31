@@ -1,10 +1,10 @@
 # CaptionStew: Unified Data Preparation for Diverse-Domain Audio Captioning
 
 This repository provides easy-to-follow recipes to download the audio of **CaptionStew**, a collection of more than
-10 million audio captions spanning diverse domains, and to pair every clip with its metadata and captions. With it, the
-training data of
-[Revisiting Audio-language Pretraining for Learning General-purpose Audio Representation](https://arxiv.org/abs/2511.16757)
-can be rebuilt locally.
+10 million audio captions spanning diverse domains, and to pair every clip with its metadata and captions. 
+
+**CaptionStew** is introduced and used as the training dataset for our ACL 2026 Long paper
+[Revisiting Audio-language Pretraining for Learning General-purpose Audio Representation](https://arxiv.org/abs/2511.16757).
 
 **CaptionStew** aggregates eight open-source audio caption datasets:
 [AudioCaps](https://aclanthology.org/N19-1011/),
