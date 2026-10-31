@@ -1,15 +1,27 @@
-# CaptionStew-data-prep
+# CaptionStew: Unified Data Preparation for Diverse-Domain Audio Captioning
 
-Recipes to download the audio of **CaptionStew** and pair every clip with its metadata and captions, so that the
+This repository provides easy-to-follow recipes to download the audio of **CaptionStew**, a collection of more than
+10 million audio captions spanning diverse domains, and to pair every clip with its metadata and captions. With it, the
 training data of
 [Revisiting Audio-language Pretraining for Learning General-purpose Audio Representation](https://arxiv.org/abs/2511.16757)
 can be rebuilt locally.
 
-CaptionStew aggregates eight open-source audio caption datasets (AudioCaps, Clotho, MusicCaps, WavCaps, AudioSetCaps,
-FusionAudio, JamendoMaxCaps and ParaSpeechCaps): 9.1M audio clips, 10.6M captions, about 34,800 hours of environmental
-sound, music and expressive speech. The captions are published on Hugging Face at
-[`RayTseng0406/CaptionStew`](https://huggingface.co/datasets/RayTseng0406/CaptionStew) as Lhotse manifests. The audio
-cannot be redistributed, so this repository downloads it from the original sources, one recipe per audio source.
+**CaptionStew** aggregates eight open-source audio caption datasets:
+[AudioCaps](https://aclanthology.org/N19-1011/),
+[Clotho](https://arxiv.org/abs/1910.09387),
+[MusicCaps](https://arxiv.org/abs/2301.11325),
+[WavCaps](https://arxiv.org/abs/2303.17395),
+[AudioSetCaps](https://arxiv.org/abs/2411.18953),
+[FusionAudio](https://arxiv.org/abs/2506.01111),
+[JamendoMaxCaps](https://arxiv.org/abs/2502.07461) and
+[ParaSpeechCaps](https://arxiv.org/abs/2503.04713).
+Together they provide **10.6M captions** for 9.1M audio clips, covering environmental sound, music and expressive speech.
+The captions differ in *descriptive focus* (which attributes of the audio they describe) and *granularity* (how much
+detail they give about those attributes). The captions are published on Hugging Face at
+[`RayTseng0406/CaptionStew`](https://huggingface.co/datasets/RayTseng0406/CaptionStew) as
+[Lhotse](https://github.com/lhotse-speech/lhotse) manifests. Hosting the audio itself would raise complex licensing
+issues, so this repository instead provides runnable scripts that download it from the original sources, one recipe per
+audio source.
 
 ## What you get
 
