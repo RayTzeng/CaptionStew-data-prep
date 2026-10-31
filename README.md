@@ -208,6 +208,11 @@ Models in the paper resample all audio to 16 kHz (e.g. `cuts.resample(16000)`).
     dataset/<Source>/        one recipe (README + scripts) per audio source
     tools/                   maintainer tools for building the Hugging Face release
 
+## Disclaimer
+
+This repository has not yet been extensively tested. If you run into a problem or have a suggestion, please
+[open an issue](https://github.com/RayTzeng/CaptionStew-data-prep/issues) or submit a pull request.
+
 ## Citation
 
 If you find this repository useful, please consider citing the following work:
