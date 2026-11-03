@@ -27,14 +27,17 @@ detail they give about those attributes). The captions are published on Hugging 
 issues, so this repository instead provides runnable scripts that download it from the original sources, one recipe per
 audio source.
 
+This branch adds support for the **Qwen3-Omni captions** of CaptionStew 10M ([Outcome C](#outcome-c-captionstew-10m-with-qwen3-omni-captions)).
+
 ## What you get
 
-Following this repository produces Lhotse manifests that point to your local audio, in one or both of two forms:
+Following this repository produces Lhotse manifests that point to your local audio, in any of three forms:
 
 | Outcome | Caption files on Hugging Face | Linked manifests | Audio needed |
 |---|---|---|---|
 | **A. CaptionStew 10M (CS10M)**, the full training corpus of the paper | [`10M/shard_{0..9}.jsonl.gz`](https://huggingface.co/datasets/RayTseng0406/CaptionStew/tree/main/10M) | `manifests/10M/shard_{0..9}.jsonl.gz` | all sources |
 | **B. One manifest per caption dataset** | [`dataset_splits/<dataset>.jsonl.gz`](https://huggingface.co/datasets/RayTseng0406/CaptionStew/tree/main/dataset_splits) | `manifests/dataset_splits/<dataset>.jsonl.gz` | only that dataset's sources (see [Outcome B](#outcome-b-one-manifest-per-caption-dataset)) |
+| **C. CaptionStew 10M with Qwen3-Omni captions** | [`manifest/CaptionStew_10M_30s_{00..09}.jsonl.gz`](https://huggingface.co/datasets/eureka1500/CaptionStew10M-Qwen3Omni/tree/main/manifest) | `manifests/qwen3omni/CaptionStew_10M_30s_{00..09}.jsonl.gz` | all sources (or only those of the shards you link) |
 
 In CS10M, captions of the same clip coming from different caption datasets are merged into one caption list (9.12M
 cuts, 10.58M captions). The per-dataset manifests keep each caption dataset separate, so a clip can appear in several of
@@ -173,6 +176,58 @@ Link one caption dataset:
 or all of them at once (`captions/dataset_splits/*.jsonl.gz`). Each input gives `manifests/dataset_splits/<dataset>.jsonl.gz`.
 Each recipe README ends with the linking command for the caption datasets it serves.
 
+## Outcome C: CaptionStew 10M with Qwen3-Omni captions
+
+[`eureka1500/CaptionStew10M-Qwen3Omni`](https://huggingface.co/datasets/eureka1500/CaptionStew10M-Qwen3Omni)
+re-captions CaptionStew 10M with Qwen3-Omni-30B-A3B-Captioner, as part of
+[Unlocking Strong Supervision: A Data-Centric Study of General-Purpose Audio Pre-Training Methods](https://arxiv.org/abs/2603.25767).
+Each caption is a detailed, multi-paragraph description (about 400 words) that ends with a summary paragraph; the
+original CaptionStew captions are kept alongside it.
+
+Prepare the audio as for Outcome A, then download, convert and link the captions:
+
+    ./qwen3omni/download_qwen3omni.sh captions_qwen3omni          # ~8.3 GB
+
+    python qwen3omni/convert_qwen3omni.py captions_qwen3omni/manifest/*.jsonl.gz \
+      --output-dir captions/qwen3omni \
+      --text full
+
+    python link_captions.py captions/qwen3omni/*.jsonl.gz \
+      --audio-root "${audio_root}" \
+      --output-dir manifests
+
+    python validate.py manifests/qwen3omni/*.jsonl.gz --num-decode 50
+
+`--text` selects what goes into `supervisions[0].custom.caption`:
+
+| `--text` | Caption list |
+|---|---|
+| `full` (default) | the full Qwen3-Omni caption |
+| `summary` | its final summary paragraph, the text used for training in the paper |
+| `full+original`, `summary+original` | the Qwen3-Omni text followed by the original CaptionStew captions |
+
+The original captions are always kept in `supervisions[0].custom.original_caption`.
+
+The shards are grouped by audio source, so you can link only the shards whose audio you have prepared:
+
+| Shard | Cuts | Audio sources |
+|---|---:|---|
+| `CaptionStew_10M_30s_00.jsonl.gz` | 912,931 | `audioset`, `wavcaps` |
+| `CaptionStew_10M_30s_01.jsonl.gz` | 912,938 | `audioset` |
+| `CaptionStew_10M_30s_02.jsonl.gz` | 912,856 | `jamendo`, `wavcaps`, `audioset`, `clotho` |
+| `CaptionStew_10M_30s_03.jsonl.gz` | 912,899 | `jamendo` |
+| `CaptionStew_10M_30s_04.jsonl.gz` | 912,929 | `emilia`, `jamendo`, `vggsound`, `wavcaps` |
+| `CaptionStew_10M_30s_05.jsonl.gz` | 912,938 | `emilia`, `youtube4m`, `voxceleb1`, `voxceleb2`, `ears`, `expresso` |
+| `CaptionStew_10M_30s_06.jsonl.gz` – `09` | 3.41M | `youtube4m` |
+
+Notes:
+
+- The Qwen3-Omni captions cover 8.87M of the 9.12M CS10M cuts; most of the clips without a Qwen3-Omni caption are
+  from YouTube-4M (`CaptionStew_10M_30s_08.jsonl.gz` is smaller than the other shards).
+- The conversion uses the same path keys and cut IDs as the CaptionStew release, so the Qwen3-Omni and CaptionStew
+  manifests can be joined by cut ID.
+- Converting all ten shards takes about 3 minutes per shard and writes about 8 GB.
+
 ## Linking details
 
 - Any set of manifests can be linked in one run; the output keeps each file's folder name
@@ -211,11 +266,13 @@ Models in the paper resample all audio to 16 kHz (e.g. `cuts.resample(16000)`).
     common/                  helpers shared by the recipes
     dataset/<Source>/        one recipe (README + scripts) per audio source
     tools/                   maintainer tools for building the Hugging Face release
+    qwen3omni/               download and convert the Qwen3-Omni captions (Outcome C)
 
 ## Changelog
 
 - **2026-10**: Initial release of CaptionStew-data-prep: recipes to download the audio of every CaptionStew source and
   link it to the captions on Hugging Face.
+- **2026-11**: Added the Qwen3-Omni captions of CaptionStew 10M (Outcome C).
 
 ## Disclaimer
 
@@ -231,6 +288,13 @@ If you find this repository useful, please consider citing the following work:
   author={Tseng, Wei-Cheng and Zhou, Xuanru and Huo, Mingyue and Shao, Yiwen and Zhang, Hao and Yu, Dong},
   journal={arXiv preprint arXiv:2511.16757},
   year={2025}
+}
+
+@article{zhou2026unlocking,
+  title={Unlocking Strong Supervision: A Data-Centric Study of General-Purpose Audio Pre-Training Methods},
+  author={Zhou, Xuanru and Shao, Yiwen and Tseng, Wei-Cheng and Yu, Dong},
+  journal={arXiv preprint arXiv:2603.25767},
+  year={2026}
 }
 ```
 
