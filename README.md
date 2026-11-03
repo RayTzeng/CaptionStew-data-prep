@@ -27,6 +27,11 @@ detail they give about those attributes). The captions are published on Hugging 
 issues, so this repository instead provides runnable scripts that download it from the original sources, one recipe per
 audio source.
 
+> **Qwen3-Omni captions.** Detailed captions of CaptionStew 10M generated with Qwen3-Omni-30B-A3B-Captioner
+> ([`eureka1500/CaptionStew10M-Qwen3Omni`](https://huggingface.co/datasets/eureka1500/CaptionStew10M-Qwen3Omni),
+> from [Unlocking Strong Supervision](https://arxiv.org/abs/2603.25767)) can be linked to the same audio with the
+> scripts on the [`Qwen3OmniCaptions`](https://github.com/RayTzeng/CaptionStew-data-prep/tree/Qwen3OmniCaptions) branch.
+
 ## What you get
 
 Following this repository produces Lhotse manifests that point to your local audio, in one or both of two forms:
@@ -216,6 +221,7 @@ Models in the paper resample all audio to 16 kHz (e.g. `cuts.resample(16000)`).
 
 - **2026-10**: Initial release of CaptionStew-data-prep: recipes to download the audio of every CaptionStew source and
   link it to the captions on Hugging Face.
+- **2026-11**: Added support for the Qwen3-Omni captions of CaptionStew 10M on the [`Qwen3OmniCaptions`](https://github.com/RayTzeng/CaptionStew-data-prep/tree/Qwen3OmniCaptions) branch.
 
 ## Disclaimer
 
